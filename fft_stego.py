@@ -2,24 +2,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 
-# Convert text to binary
 def text_to_bits(text):
     return ''.join(format(ord(c), '08b') for c in text)
 
-# Convert bits back to text
 def bits_to_text(bits):
     chars = []
     for i in range(0, len(bits), 8):
         byte = bits[i:i+8]
-        if len(byte) == 8:  # Ensure we have a full byte
+        if len(byte) == 8:  
             chars.append(chr(int(byte, 2)))
     return ''.join(chars)
 
-# Embed text in FFT coefficients
 def embed_text_in_fft(fshift, message_bits):
     rows, cols = fshift.shape
     center_row, center_col = rows // 2, cols // 2
-    max_bits = 20 * 20  # Embedding region size (20x20 pixels)
+    max_bits = 20 * 20  
 
     if len(message_bits) > max_bits:
         raise ValueError(f"Message too long! Max bits: {max_bits}, got {len(message_bits)}")
@@ -35,7 +32,6 @@ def embed_text_in_fft(fshift, message_bits):
             real_val = f_embedded[i, j].real
             imag_val = f_embedded[i, j].imag
 
-            # Embed bit in the LSB of the integer part of the real value
             int_val = int(np.floor(real_val))
             frac_val = real_val - int_val
             current_bit = int_val & 1
@@ -49,7 +45,6 @@ def embed_text_in_fft(fshift, message_bits):
 
     return f_embedded
 
-# Extract bits from FFT coefficients
 def extract_bits_from_fft(fshift, bit_length):
     rows, cols = fshift.shape
     center_row, center_col = rows // 2, cols // 2
@@ -61,15 +56,13 @@ def extract_bits_from_fft(fshift, bit_length):
                 return bits
 
             real_val = fshift[i, j].real
-            # Use floor instead of round for robustness, as rounding can flip bits
+
             int_val = int(np.floor(real_val))
             bits += str(int_val & 1)
 
     return bits
 
-# === MAIN PIPELINE ===
 try:
-    # Read image as grayscale
     image = cv2.imread("temp.png")
     if image is None:
         raise FileNotFoundError("Could not load image 'temp.png'. Please check the file path.")
@@ -80,13 +73,11 @@ try:
     f = np.fft.fft2(gray)
     fshift = np.fft.fftshift(f)
 
-    # Prepare message
     secret_msg = "Hello Airej!"
     message_bits = text_to_bits(secret_msg)
     print(f"Original Message: {secret_msg}")
     print(f"Message Bits: {message_bits} ({len(message_bits)} bits)")
 
-    # Embed
     f_embedded = embed_text_in_fft(fshift, message_bits)
 
     # Inverse FFT
@@ -94,10 +85,8 @@ try:
     img_stego = np.fft.ifft2(f_ishift)
     img_stego_real = np.abs(img_stego)
 
-    # Normalize and convert to uint8 for saving/displaying
     img_stego_display = np.clip(img_stego_real, 0, 255).astype(np.uint8)
 
-    # Save the stego image (optional)
     cv2.imwrite("stego_image.png", img_stego_display)
 
     # Display image
@@ -106,8 +95,8 @@ try:
     plt.axis('off')
     plt.show()
 
-    # Extract message
-    f2 = np.fft.fft2(img_stego)  # Use img_stego, not the display version
+    # Extracting message
+    f2 = np.fft.fft2(img_stego) 
     f2shift = np.fft.fftshift(f2)
     extracted_bits = extract_bits_from_fft(f2shift, len(message_bits))
     extracted_message = bits_to_text(extracted_bits)
